@@ -74,7 +74,6 @@ export class FakeGitHubClient implements GitHubClient {
   getCommit(
     owner: string,
     repo: string,
-    _ref: string,
   ): Promise<{ commitSha: string; treeSha: string; committedAt: string } | null> {
     this.assertOwnerRepo(owner, repo);
     return Promise.resolve({
@@ -87,8 +86,6 @@ export class FakeGitHubClient implements GitHubClient {
   getTree(
     owner: string,
     repo: string,
-    _treeSha: string,
-    _recursive: boolean,
   ): Promise<GitHubTreeResponse> {
     this.assertOwnerRepo(owner, repo);
     const response: GitHubTreeResponse = {
