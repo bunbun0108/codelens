@@ -6,9 +6,13 @@ import { AppError } from "../../../../../shared/types/errors";
 export const GET = withErrorHandler(async (req: Request, requestId: string, props?: any) => {
   // Use a fallback for dynamic route params extraction
   let id = "";
-  if (props && props.params && props.params.id) {
-     id = props.params.id;
-  } else {
+  if (props && props.params) {
+     const params = await props.params;
+     if (params && params.id) {
+       id = params.id;
+     }
+  }
+  if (!id) {
      const url = new URL(req.url);
      const parts = url.pathname.split('/');
      id = parts[parts.length - 2]!; // .../snapshots/[id]/file

@@ -120,12 +120,8 @@ jobs:
         run: pnpm playwright install chromium --with-deps
 
       - name: E2E Tests
-        # Test 1 & 2 are purely client-side (no GitHub calls).
-        # Test 3 makes one authenticated call to POST /api/ingest to seed the
-        # in-memory snapshot store, then intercepts all subsequent network
-        # interactions via page.route(). GITHUB_TOKEN is required for that
-        # single seed call.
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        # All default E2E tests use the deterministic FakeGitHubClient
+        # (via CODELENS_FAKE_GITHUB=1 in playwright.config.ts). No live network
+        # calls are made, so GITHUB_TOKEN is not required here.
         run: pnpm test:e2e --project=chromium
 

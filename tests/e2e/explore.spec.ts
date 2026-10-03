@@ -1,32 +1,18 @@
-import { test, expect, request as playwrightRequest } from "@playwright/test";
+import { test, expect } from "@playwright/test";
+import { FAKE_REPO_URL } from "../../src/server/github/fake-client";
 
 /**
  * E2E spec — CodeLens M1.
  *
- * All three tests are deterministic in CI:
+ * All three tests are fully deterministic:
  *
  *  1. "home page" — purely static DOM check.
  *  2. "bad URL" — parseGitHubUrl rejects a non-GitHub host entirely on the
  *     client before any server call.
- *  3. "explore flow" — seeding strategy:
- *       a. POST /api/ingest via Playwright's request fixture (not the browser).
- *          This is the ONE live GitHub call that happens in test setup.
- *          prisma/prisma-examples/tree/latest/orm/nextjs is tiny (18 files,
- *          ~19 KB) and stable.
- *       b. Navigate to /r/prisma/prisma-examples with the same URL param.
- *          The Next.js server component calls ingestRepository() which returns
- *          the already-cached snapshot (cacheHit: true) — zero GitHub calls.
- *       c. The client-side blob fetch (GET /api/snapshots/:id/file) is
- *          intercepted by page.route() so the file content is deterministic.
- *
- *     Net result: one real GitHub call (step a) happens before browser
- *     navigation; all subsequent rendering is against in-memory data + mocks.
- *     GITHUB_TOKEN must be set in the environment (CI: repository secret).
+ *  3. "explore flow" — Server runs with CODELENS_FAKE_GITHUB=1, routing all
+ *     GitHub API calls to an in-memory fixture. No network calls are made.
+ *     No GITHUB_TOKEN is required.
  */
-
-// Subpath URL used for the explore-flow test
-const TREE_URL =
-  "https://github.com/prisma/prisma-examples/tree/latest/orm/nextjs";
 
 test.describe("CodeLens E2E", () => {
   // ── 1. Static home page ───────────────────────────────────────────────────
@@ -61,66 +47,28 @@ test.describe("CodeLens E2E", () => {
   // ── 3. Full explore flow ──────────────────────────────────────────────────
   test("explore flow: URL → tree appears → click file → content renders", async ({
     page,
-    baseURL,
   }) => {
-    // Step a: Seed in-memory snapshot via API — one live GitHub call.
-    // Subsequent page load hits cacheHit=true (no second GitHub call).
-    const apiContext = await playwrightRequest.newContext({
-      // baseURL is always defined when configured in playwright.config.ts
-      baseURL: baseURL!,
-    });
-    const seedResp = await apiContext.post("/api/ingest", {
-      data: { url: TREE_URL },
-      timeout: 60_000,
-    });
-    if (!seedResp.ok()) {
-      const body = await seedResp.text();
-      throw new Error(`Seed ingest failed (${seedResp.status()}): ${body}`);
-    }
-    const seedData = await seedResp.json();
-    const snapshotId: string = seedData.snapshot.id;
-    await apiContext.dispose();
+    // Navigate to home and submit the fake repo URL
+    await page.goto("/");
+    const input = page.locator('input[type="url"]');
+    await expect(input).toBeVisible();
+    await input.fill(FAKE_REPO_URL);
+    await page.getByRole("button", { name: /Explore/i }).click();
 
-    // Step b: Intercept client-side blob fetch — deterministic content.
-    await page.route(`**/api/snapshots/${snapshotId}/file*`, async (route) => {
-      const url = new URL(route.request().url());
-      const pathParam = url.searchParams.get("path") ?? "";
-      await route.fulfill({
-        status: 200,
-        contentType: "application/json",
-        body: JSON.stringify({
-          snapshotId,
-          path: pathParam,
-          blobSha: "mocked000",
-          size: 27,
-          language: "typescript",
-          lineCount: 1,
-          content: "// mocked: hello from e2e",
-        }),
-      });
-    });
-
-    // Step c: Navigate to the explorer page.
-    // The server component calls ingestRepository() → returns cached snapshot.
-    await page.goto(
-      `/r/prisma/prisma-examples?url=${encodeURIComponent(TREE_URL)}`,
-      { timeout: 30_000 }
-    );
-
-    // Tree must contain files from subpath orm/nextjs (paths are repo-root-relative).
-    // "page.tsx" appears in orm/nextjs/app/page.tsx — visible as "page.tsx" in tree.
+    // Tree must contain files from the fake repo.
+    // "greet.ts" appears in fake-repo/src/greet.ts.
     const fileEntry = page
       .locator("button")
-      .filter({ hasText: /page\.tsx/i })
+      .filter({ hasText: /greet\.ts/i })
       .first();
     await expect(fileEntry).toBeVisible({ timeout: 20_000 });
 
     // Click the file
     await fileEntry.click();
 
-    // The FileViewer calls GET /api/snapshots/:id/file — intercepted above.
+    // The FileViewer renders the fake content
     await expect(
-      page.getByText("// mocked: hello from e2e")
+      page.getByText("Hello, ${name}")
     ).toBeVisible({ timeout: 10_000 });
   });
 });

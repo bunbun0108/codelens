@@ -17,16 +17,18 @@ export default defineConfig({
       use: { ...devices['Desktop Chrome'] },
     },
   ],
+  // Skip any test tagged with @live by default.
+  // We run the @live tests in a separate step or project if needed.
+  grepInvert: /@live/,
   webServer: {
     command: 'pnpm dev',
     url: 'http://localhost:3000',
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,
     env: {
-      // Forwarded so the dev server can authenticate with GitHub for the
-      // seed ingest call in test 3. Falls back to empty string when unset
-      // (the server will warn but tests 1 & 2 don't need it).
-      GITHUB_TOKEN: process.env.GITHUB_TOKEN ?? '',
+      // Use the fake, in-memory deterministic GitHub client for E2E tests.
+      // This ensures 100% stable tests without network/rate-limit flakes.
+      CODELENS_FAKE_GITHUB: '1',
     },
   },
 });

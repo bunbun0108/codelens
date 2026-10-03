@@ -143,3 +143,12 @@ This file records every non-obvious decision made during development of CodeLens
 **Decision:** Both enabled in tsconfig.
 
 **Rationale:** These catch common bugs: array indexing without `undefined` check, and using `key: undefined` in optional-property objects. The spec requires both.
+
+---
+
+## D-018: Fake GitHubClient for deterministic E2E
+
+**Decision:** Introduce `FakeGitHubClient`, wired via `CODELENS_FAKE_GITHUB=1` and strictly refused in production.
+
+**Rationale:** E2E testing against the live GitHub API is slow, rate-limited, and non-deterministic due to network. `FakeGitHubClient` provides a hardcoded, in-memory repository fixture (`fake-owner/fake-repo`). This enables instant, 100% deterministic E2E runs in CI without requiring the `GITHUB_TOKEN` secret.
+

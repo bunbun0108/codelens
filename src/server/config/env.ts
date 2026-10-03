@@ -17,6 +17,10 @@ const EnvSchema = z.object({
     .transform((v) => v === "true"),
   SNAPSHOT_STORE_MAX: z.coerce.number().int().min(1).default(50),
   BLOB_CACHE_MAX_MB: z.coerce.number().int().min(1).default(100),
+  CODELENS_FAKE_GITHUB: z
+    .string()
+    .optional()
+    .transform((v) => v === "1"),
 });
 
 export type Env = z.infer<typeof EnvSchema>;

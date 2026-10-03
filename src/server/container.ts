@@ -5,6 +5,8 @@ import { MemoryBlobCache } from "./store/memory-blob-cache";
 import { IngestionService } from "./ingestion/ingest-repository";
 import { M1ContentProvider } from "./ingestion/content-provider";
 
+import { FakeGitHubClient } from "./github/fake-client";
+
 /**
  * Composition Root (M1)
  *
@@ -13,12 +15,25 @@ import { M1ContentProvider } from "./ingestion/content-provider";
  */
 
 // 1. Core clients
-const githubClient = new OctokitGitHubClient(env.GITHUB_TOKEN);
+let githubClient;
+if (env.CODELENS_FAKE_GITHUB) {
+  if (env.NODE_ENV === "production") {
+    throw new Error("CODELENS_FAKE_GITHUB is not allowed in production");
+  }
+  githubClient = new FakeGitHubClient();
+} else {
+  githubClient = new OctokitGitHubClient(env.GITHUB_TOKEN);
+}
 
 // 2. Stores (Singletons per process)
 // Note: Documented single-instance constraint in ARCHITECTURE.md
-const snapshotStore = new MemorySnapshotStore(env.SNAPSHOT_STORE_MAX);
-const blobCache = new MemoryBlobCache(env.BLOB_CACHE_MAX_MB * 1024 * 1024);
+const globalAny: any = globalThis;
+
+const snapshotStore = globalAny.snapshotStore || new MemorySnapshotStore(env.SNAPSHOT_STORE_MAX);
+if (env.NODE_ENV !== "production") globalAny.snapshotStore = snapshotStore;
+
+const blobCache = globalAny.blobCache || new MemoryBlobCache(env.BLOB_CACHE_MAX_MB * 1024 * 1024);
+if (env.NODE_ENV !== "production") globalAny.blobCache = blobCache;
 
 // 3. Services
 export const ingestionService = new IngestionService(githubClient, snapshotStore);
