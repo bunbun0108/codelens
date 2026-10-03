@@ -1,0 +1,131 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v3
+        with:
+          version: 12
+
+      - name: Get pnpm store directory
+        shell: bash
+        run: |
+          echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
+
+      - uses: actions/cache@v4
+        name: Setup pnpm cache
+        with:
+          path: ${{ env.STORE_PATH }}
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-store-
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Unit & Integration Tests
+        run: pnpm test
+
+      - name: Build Next.js
+        run: pnpm build
+
+      - name: Test Docker Build
+        run: docker build -t codelens:test .
+
+      - name: Verify Container Runs as Non-Root
+        run: |
+          USER_ID=$(docker run --rm --entrypoint id codelens:test -u)
+          if [ "$USER_ID" = "0" ]; then
+            echo "Container is running as root!"
+            exit 1
+          else
+            echo "Container running as user $USER_ID"
+          fi
+
+      - name: Verify Health Endpoint
+        run: |
+          # Production boot requires GITHUB_TOKEN; pass a dummy token so the
+          # server starts (no real API calls happen against /api/health).
+          docker run -d -p 3000:3000 \
+            -e NODE_ENV=production \
+            -e GITHUB_TOKEN=ci-dummy-token \
+            --name codelens-test codelens:test
+          # Wait up to 30s for the server to be ready
+          timeout 30 bash -c 'until curl -sf http://localhost:3000/api/health > /dev/null; do sleep 1; done'
+
+          # Assert HTTP 200
+          HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:3000/api/health)
+          if [ "$HTTP_STATUS" != "200" ]; then
+            echo "Health endpoint returned $HTTP_STATUS"
+            docker logs codelens-test
+            exit 1
+          fi
+          echo "Health check passed (status $HTTP_STATUS)"
+          docker rm -f codelens-test
+
+  e2e:
+    runs-on: ubuntu-latest
+    needs: build-and-test
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v3
+        with:
+          version: 12
+
+      - name: Get pnpm store directory
+        shell: bash
+        run: |
+          echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
+
+      - uses: actions/cache@v4
+        name: Setup pnpm cache
+        with:
+          path: ${{ env.STORE_PATH }}
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-store-
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Playwright browsers
+        run: pnpm playwright install chromium --with-deps
+
+      - name: E2E Tests
+        # Test 1 & 2 are purely client-side (no GitHub calls).
+        # Test 3 makes one authenticated call to POST /api/ingest to seed the
+        # in-memory snapshot store, then intercepts all subsequent network
+        # interactions via page.route(). GITHUB_TOKEN is required for that
+        # single seed call.
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: pnpm test:e2e --project=chromium
+
