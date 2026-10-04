@@ -11,8 +11,12 @@ import { Badge } from "../../../../components/ui/badge"
 
 import Link from "next/link"
 
-export function ExplorerClient({ snapshot }: { snapshot: Snapshot }) {
-  const [selectedFile, setSelectedFile] = React.useState<FileEntry | null>(null)
+export function ExplorerClient({ snapshot, initialFile }: { snapshot: Snapshot; initialFile?: string }) {
+  const [selectedFile, setSelectedFile] = React.useState<FileEntry | null>(() => {
+    if (!initialFile) return null;
+    return snapshot.files.find((f) => f.path === initialFile) ?? null;
+  })
+
   
   // Build the tree once
   const tree = React.useMemo(() => buildTree(snapshot.files, snapshot.source.subpath || ""), [snapshot.files, snapshot.source.subpath])
@@ -217,11 +221,19 @@ function FileViewer({ snapshotId, file }: { snapshotId: string; file: FileEntry 
             {copied ? <Check className="mr-1.5 h-3.5 w-3.5" /> : <Copy className="mr-1.5 h-3.5 w-3.5" />}
             {copied ? "Copied" : "Copy"}
           </Button>
-          <Button variant="outline" size="sm" asChild className="h-8 text-xs">
-            <a href={`data:text/plain;charset=utf-8,${encodeURIComponent(content || "")}`} download={file.name}>
-              <Download className="mr-1.5 h-3.5 w-3.5" />
-              Download
-            </a>
+          <Button 
+            variant="outline" 
+            size="sm" 
+            className="h-8 text-xs"
+            onClick={() => {
+              const a = document.createElement('a');
+              a.href = `data:text/plain;charset=utf-8,${encodeURIComponent(content || "")}`;
+              a.download = file.name;
+              a.click();
+            }}
+          >
+            <Download className="mr-1.5 h-3.5 w-3.5" />
+            Download
           </Button>
         </div>
       </div>

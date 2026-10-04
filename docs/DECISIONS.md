@@ -152,3 +152,29 @@ This file records every non-obvious decision made during development of CodeLens
 
 **Rationale:** E2E testing against the live GitHub API is slow, rate-limited, and non-deterministic due to network. `FakeGitHubClient` provides a hardcoded, in-memory repository fixture (`fake-owner/fake-repo`). This enables instant, 100% deterministic E2E runs in CI without requiring the `GITHUB_TOKEN` secret.
 
+---
+
+## D-019: Landing page palette exception
+
+**Decision:** The landing page uses two colours outside the global 5-colour palette:
+
+| Token | Value | Scope | Reason |
+|---|---|---|---|
+| Landing page background | `#030504` (near-black) | Landing page only | `#241D01` (Pitch Black) reads as yellow-brown on screen; `#030504` provides the neutral dark backdrop needed for the neon matrix effect. |
+| Matrix character colour | `#39FF14` (neon hacker green) | `MatrixBackground` component only | Achieves the visual "cyber matrix" effect the design calls for. `#3A745D` (Deep Teal) at 35% is invisible against a very dark bg at the required idle opacity. |
+
+All other UI elements on the landing page (panel, input, text, links, title) use the canonical 5-colour palette: Space Indigo (`#393A4F`), Deep Teal (`#3A745D`), Icy Aqua (`#AFFDF0`), Light Green (`#BEEF8D`), Pitch Black (`#241D01`).
+
+Explorer pages are unaffected; their background remains Pitch Black `#241D01`.
+
+**Rationale:** Design review (step 1 revision) explicitly approved these deviations and directed they be recorded here.
+
+---
+
+## D-020: dev-only unsafe-eval in CSP
+
+**Decision:** `Content-Security-Policy: script-src` includes `'unsafe-eval'` in `NODE_ENV=development` only. Production never includes it.
+
+**Rationale:** React DevTools require `eval()` in development for stack-trace reconstruction. Next.js dev overlay also relies on it. Blocking it produces console errors that mislead developers into thinking the production build is broken.
+
+**Guard:** `next.config.ts` branches on `process.env.NODE_ENV === "development"`. A unit test in `tests/unit/csp.test.ts` asserts that the production CSP string never contains `unsafe-eval`, failing CI if the logic is accidentally removed.
