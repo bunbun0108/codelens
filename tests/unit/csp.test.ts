@@ -1,32 +1,8 @@
 import { describe, it, expect } from "vitest";
-import { execSync } from "child_process";
-import path from "path";
-
 /**
  * Verifies that the production CSP header (built by next.config.ts) never
  * includes 'unsafe-eval' in script-src. See docs/DECISIONS.md D-020.
- *
- * We import the CSP value by re-running the config builder with
- * NODE_ENV=production so the test is independent of the current process env.
  */
-
-function getProductionCsp(): string {
-  const configPath = path.resolve(__dirname, "../../../next.config.ts");
-  // Run a one-liner that sets NODE_ENV=production, loads the config via tsx,
-  // and prints the CSP header value to stdout.
-  const script = `
-    process.env.NODE_ENV = "production";
-    const { default: config } = await import("${configPath}");
-    const headers = await config.headers();
-    const rule = headers[0]?.headers?.find((h) => h.key === "Content-Security-Policy");
-    process.stdout.write(rule?.value ?? "");
-  `;
-  const result = execSync(
-    `node --input-type=module --experimental-vm-modules -e '${script}'`,
-    { env: { ...process.env, NODE_ENV: "production" } },
-  ).toString();
-  return result;
-}
 
 // Alternative: directly compute the CSP string the same way next.config.ts does,
 // by replicating the logic with NODE_ENV overridden. This avoids spawning a child
