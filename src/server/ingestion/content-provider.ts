@@ -2,11 +2,13 @@ import type { GitHubClient } from "../github/client";
 import type { BlobCache } from "../store/blob-cache";
 import type { Snapshot, FileContent } from "../../shared/schemas/index";
 import { AppError } from "../../shared/types/errors";
+import { MAX_FILE_BYTES } from "../../shared/config/filter.default";
 
 export interface ContentProvider {
   /**
    * Fetches file content, ensuring the path exists in the snapshot and the blob is retrieved.
    * Throws FILE_NOT_FOUND if the path isn't in the snapshot manifest.
+   * Throws FILE_TOO_LARGE if the file exceeds the size cap.
    * Throws FILE_NOT_TEXT if the content isn't valid UTF-8 or contains NUL bytes.
    */
   getFileContent(snapshot: Snapshot, path: string): Promise<FileContent>;
@@ -24,6 +26,10 @@ export class M1ContentProvider implements ContentProvider {
       throw new AppError("FILE_NOT_FOUND", `File "${path}" not found in this snapshot.`, false);
     }
 
+    if (entry.size > MAX_FILE_BYTES) {
+      throw new AppError("FILE_TOO_LARGE", `File "${path}" exceeds maximum file size limit.`, false);
+    }
+
     // Try cache first
     let bytes = await this.blobCache.get(entry.blobSha);
 
@@ -38,6 +44,10 @@ export class M1ContentProvider implements ContentProvider {
 
       // Save to cache
       await this.blobCache.set(entry.blobSha, bytes);
+    }
+
+    if (bytes.byteLength > MAX_FILE_BYTES) {
+      throw new AppError("FILE_TOO_LARGE", `File "${path}" exceeds maximum file size limit.`, false);
     }
 
     // Text validation (spec §9 read-time checks: NUL byte in first 8 KB or invalid UTF-8)

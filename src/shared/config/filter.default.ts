@@ -1,5 +1,7 @@
 import type { FilterConfig } from "../filter-engine";
 
+export const MAX_FILE_BYTES = 256 * 1024; // 256 KB
+
 /**
  * Default filter configuration for CodeLens M1.
  * Version must be bumped on any change — it's incorporated into snapshot IDs.
@@ -216,7 +218,7 @@ export const DEFAULT_FILTER_CONFIG: FilterConfig = {
   ],
 
   // §9 rule 8: Max single file size
-  maxFileSizeBytes: 256 * 1024, // 256 KB
+  maxFileSizeBytes: MAX_FILE_BYTES,
 
   // §9 global limits
   maxIncludedFiles: 5000,

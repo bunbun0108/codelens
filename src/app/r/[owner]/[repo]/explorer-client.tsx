@@ -1,6 +1,7 @@
 "use client"
 
 import * as React from "react"
+import { useRouter, usePathname, useSearchParams } from "next/navigation"
 import type { Snapshot } from "../../../../shared/schemas/index"
 import { Badge } from "../../../../components/ui/badge"
 import {
@@ -10,8 +11,23 @@ import {
 } from "../../../../components/ui/popover"
 import { GitCommit, AlertCircle } from "lucide-react"
 import Link from "next/link"
+import { TreeView } from "../../../../components/tree-view"
+import { buildFileTree } from "../../../../lib/file-tree"
+import { FileViewer } from "../../../../components/file-viewer"
 
 export function ExplorerClient({ snapshot, initialFile }: { snapshot: Snapshot; initialFile?: string }) {
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+
+  const selectedFile = searchParams.get("file") || initialFile || null;
+  const tree = React.useMemo(() => buildFileTree(snapshot.files), [snapshot.files]);
+
+  const handleSelect = React.useCallback((path: string) => {
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("file", path);
+    router.replace(`${pathname}?${params.toString()}`);
+  }, [router, pathname, searchParams]);
   const shortSha = snapshot.source.commitSha.substring(0, 7)
   const totalExcluded = Object.values(snapshot.stats.excludedByReason).reduce((a, b) => a + b, 0)
   const commitUrl = `https://github.com/${snapshot.repo.owner}/${snapshot.repo.name}/commit/${snapshot.source.commitSha}`
@@ -97,28 +113,24 @@ export function ExplorerClient({ snapshot, initialFile }: { snapshot: Snapshot; 
       </header>
 
       <div className="flex flex-1 overflow-hidden p-4 gap-4">
-        {/* Left Panel - File Tree Placeholder */}
+        {/* Left Panel - File Tree */}
         <aside 
-          className="w-72 shrink-0 rounded-md border flex flex-col items-center justify-center"
+          className="w-72 shrink-0 rounded-md border flex flex-col overflow-hidden"
           style={{ backgroundColor: "#393A4F", borderColor: "#3A745D" }}
         >
-          <div className="text-center opacity-60">
-            <p className="font-medium mb-1" style={{ color: "#BEEF8D" }}>File Tree</p>
-            <p className="text-xs">(Placeholder)</p>
-          </div>
+          <TreeView 
+            tree={tree}
+            selectedFile={selectedFile}
+            onSelect={handleSelect}
+          />
         </aside>
 
-        {/* Right Panel - File Viewer Placeholder */}
-        <main 
-          className="flex-1 rounded-md border flex flex-col items-center justify-center"
-          style={{ backgroundColor: "#393A4F", borderColor: "#3A745D" }}
-        >
-          <div className="text-center opacity-60">
-            <p className="font-medium mb-1" style={{ color: "#BEEF8D" }}>File Viewer</p>
-            <p className="text-xs">
-              {initialFile ? `Selected: ${initialFile}` : "(Placeholder)"}
-            </p>
-          </div>
+        {/* Right Panel - File Viewer */}
+        <main className="flex-1 overflow-hidden flex flex-col">
+          <FileViewer
+            snapshotId={snapshot.id}
+            selectedPath={selectedFile}
+          />
         </main>
       </div>
     </div>
