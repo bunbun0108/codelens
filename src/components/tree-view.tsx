@@ -28,13 +28,21 @@ type FlatNode = {
 export function TreeView({ 
   tree, 
   selectedFile, 
-  onSelect 
+  onSelect,
+  onViewerFocus,
+  filterInputRef: externalFilterInputRef,
 }: { 
   tree: TreeNode[];
   selectedFile: string | null;
   onSelect: (path: string) => void;
+  /** Called when Enter is pressed on a file — moves focus to the viewer */
+  onViewerFocus?: () => void;
+  /** Optional external ref for the filter input (for programmatic focus) */
+  filterInputRef?: React.RefObject<HTMLInputElement | null>;
 }) {
   const [filter, setFilter] = React.useState("");
+  const internalFilterInputRef = React.useRef<HTMLInputElement | null>(null);
+  const filterRef = externalFilterInputRef ?? internalFilterInputRef;
   
   // Folders collapsed by default except top-level
   const [expandedPaths, setExpandedPaths] = React.useState<Set<string>>(() => {
@@ -176,6 +184,8 @@ export function TreeView({
           toggleExpand(node.id);
         } else {
           onSelect(node.id);
+          // Move focus to the viewer after selecting a file with Enter
+          onViewerFocus?.();
         }
         break;
       default:
@@ -197,10 +207,29 @@ export function TreeView({
       <div className="px-3 py-2 border-b shrink-0 flex items-center gap-2" style={{ borderColor: "#3A745D" }}>
         <Search className="h-4 w-4 opacity-50" />
         <input
+          ref={filterRef}
           type="text"
           placeholder="Filter files..."
           value={filter}
           onChange={(e) => setFilter(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Escape") {
+              e.preventDefault();
+              if (filter) {
+                // Non-empty: clear the filter
+                setFilter("");
+              } else {
+                // Already empty: blur the input and focus the first tree item
+                filterRef.current?.blur();
+                const firstNode = flatNodes[0];
+                if (firstNode) {
+                  const firstId = firstNode.id;
+                  setFocusedId(firstId);
+                  itemRefs.current.get(firstId)?.focus();
+                }
+              }
+            }
+          }}
           className="bg-transparent border-none outline-none flex-1 placeholder:opacity-40 min-w-0"
           style={{ color: "#AFFDF0" }}
         />
