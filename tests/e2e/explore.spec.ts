@@ -19,24 +19,24 @@ test.describe("CodeLens E2E", () => {
   test("home page renders URL input", async ({ page }) => {
     await page.goto("/");
     await expect(page.getByRole("main")).toBeVisible();
-    const input = page.locator('input[type="url"]');
+    const input = page.locator("#repo-url-input");
     await expect(input).toBeVisible();
     await expect(input).toHaveAttribute(
       "placeholder",
-      /https:\/\/github\.com/i
+      /github\.com/i
     );
   });
 
   // ── 2. Bad URL — client-only, no server call ──────────────────────────────
   test("bad URL shows client-side error without hitting server", async ({ page }) => {
     await page.goto("/");
-    await expect(page.locator('input[type="url"]')).toBeVisible();
+    const input = page.locator("#repo-url-input");
+    await expect(input).toBeVisible();
 
     // Syntactically valid https:// URL but non-GitHub host →
     // parseGitHubUrl throws INVALID_URL before any server call.
-    await page.locator('input[type="url"]').fill("https://gitlab.com/some/repo");
-    await expect(page.getByRole("button", { name: /Explore/i })).toBeEnabled();
-    await page.getByRole("button", { name: /Explore/i }).click();
+    await input.fill("https://gitlab.com/some/repo");
+    await page.keyboard.press("Enter");
 
     // React sets error state → <p> with "github.com" text
     await expect(
@@ -50,15 +50,15 @@ test.describe("CodeLens E2E", () => {
   }) => {
     // Navigate to home and submit the fake repo URL
     await page.goto("/");
-    const input = page.locator('input[type="url"]');
+    const input = page.locator("#repo-url-input");
     await expect(input).toBeVisible();
     await input.fill(FAKE_REPO_URL);
-    await page.getByRole("button", { name: /Explore/i }).click();
+    await page.keyboard.press("Enter");
 
     // Tree must contain files from the fake repo.
     // "greet.ts" appears in fake-repo/src/greet.ts.
     const fileEntry = page
-      .locator("button")
+      .locator("[role='treeitem'], button")
       .filter({ hasText: /greet\.ts/i })
       .first();
     await expect(fileEntry).toBeVisible({ timeout: 20_000 });

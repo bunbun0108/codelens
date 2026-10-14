@@ -15,16 +15,16 @@ test.describe("Live CodeLens E2E @live", () => {
   test("live explore flow against real repo", async ({ page }) => {
     // Navigate to home and submit a real URL
     await page.goto("/");
-    const input = page.locator('input[type="url"]');
+    const input = page.locator("#repo-url-input");
     await expect(input).toBeVisible();
     await input.fill(
       "https://github.com/prisma/prisma-examples/tree/latest/orm/nextjs"
     );
-    await page.getByRole("button", { name: /Explore/i }).click();
+    await page.keyboard.press("Enter");
 
     // Wait for the tree to render a real file
     const fileEntry = page
-      .locator("button")
+      .locator("[role='treeitem'], button")
       .filter({ hasText: /README\.md/i })
       .first();
     await expect(fileEntry).toBeVisible({ timeout: 30_000 });
