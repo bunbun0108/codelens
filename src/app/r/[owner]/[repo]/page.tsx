@@ -48,35 +48,31 @@ export default async function RepoPage(props: PageProps) {
 
     return (
       <div
-        className="flex h-screen w-full items-center justify-center p-6"
-        style={{ backgroundColor: "#241D01" }}
+        className="flex h-screen w-full items-center justify-center p-6 bg-bg text-accent font-mono"
       >
         <div
-          className="max-w-md w-full space-y-4 rounded-sm border p-6"
-          style={{ borderColor: "#3A745D", backgroundColor: "#393A4F" }}
+          className="max-w-md w-full space-y-4 rounded-sm border border-line bg-surface p-6"
         >
           <div
-            className="flex items-center gap-3 border-b pb-4"
-            style={{ borderColor: "#3A745D" }}
+            className="flex items-center gap-3 border-b border-line pb-4"
           >
-            <AlertCircle className="h-6 w-6" style={{ color: "#BEEF8D" }} />
-            <h2 className="text-lg font-semibold" style={{ color: "#AFFDF0" }}>
+            <AlertCircle className="h-6 w-6 text-accent-2" />
+            <h2 className="text-lg font-semibold text-accent">
               Ingestion Failed
             </h2>
           </div>
           <div className="space-y-2 pt-2">
-            <p className="text-sm" style={{ color: "#AFFDF0", opacity: 0.9 }}>
+            <p className="text-sm text-accent opacity-90">
               {message}
             </p>
-            <p className="text-xs font-mono" style={{ color: "#3A745D" }}>
+            <p className="text-xs font-mono text-line">
               Error code: {code}
             </p>
           </div>
           <div className="pt-4">
             <Link
               href="/"
-              className="text-sm font-medium underline underline-offset-4 hover:opacity-80"
-              style={{ color: "#BEEF8D" }}
+              className="text-sm font-medium underline underline-offset-4 hover:opacity-80 text-accent-2"
             >
               ← Back to Home
             </Link>

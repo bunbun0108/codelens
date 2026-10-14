@@ -248,6 +248,55 @@ test.describe("CodeLens E2E", () => {
       expect(["treeitem", "textbox"]).toContain(focusedRole);
     });
   });
+
+  // ── 7. Theme toggle & persistence ─────────────────────────────────────────
+  test("theme toggle: switches theme and persists choice in localStorage across reload", async ({
+    page,
+  }) => {
+    // Navigate to home and submit the fake repo URL
+    await page.goto("/");
+    const input = page.locator("#repo-url-input");
+    await expect(input).toBeVisible();
+    await input.fill(FAKE_REPO_URL);
+    await page.keyboard.press("Enter");
+
+    const toggle = page.locator("#theme-toggle");
+    await expect(toggle).toBeVisible({ timeout: 15_000 });
+
+    // Read initial theme state
+    const initialIsDark = await page.evaluate(() =>
+      document.documentElement.classList.contains("dark")
+    );
+
+    // Click theme toggle button
+    await toggle.click();
+
+    // Verify dark class toggled
+    const toggledIsDark = await page.evaluate(() =>
+      document.documentElement.classList.contains("dark")
+    );
+    expect(toggledIsDark).toBe(!initialIsDark);
+
+    // Verify localStorage has persisted the new theme value
+    const storedTheme = await page.evaluate(() =>
+      localStorage.getItem("codelens-theme")
+    );
+    expect(storedTheme).toBe(toggledIsDark ? "dark" : "light");
+
+    // Reload page to test persistence and no flash of wrong theme
+    await page.reload();
+
+    await expect(page.locator("#theme-toggle")).toBeVisible({ timeout: 15_000 });
+    const reloadedIsDark = await page.evaluate(() =>
+      document.documentElement.classList.contains("dark")
+    );
+    expect(reloadedIsDark).toBe(toggledIsDark);
+    const reloadedStoredTheme = await page.evaluate(() =>
+      localStorage.getItem("codelens-theme")
+    );
+    expect(reloadedStoredTheme).toBe(storedTheme);
+  });
 });
+
 
 

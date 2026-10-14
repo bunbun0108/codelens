@@ -65,7 +65,17 @@ export const LineRow = React.memo(function LineRow({
       <div className="flex-1 whitespace-pre pl-2 overflow-visible">
         {tokens ? (
           tokens.map((token, idx) => (
-            <span key={idx} style={{ color: token.color }}>
+            <span
+              key={idx}
+              className="shiki-token"
+              style={
+                token.htmlStyle
+                  ? (token.htmlStyle as unknown as React.CSSProperties)
+                  : token.color
+                  ? { color: token.color }
+                  : undefined
+              }
+            >
               {token.content}
             </span>
           ))

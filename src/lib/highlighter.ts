@@ -6,7 +6,10 @@ export const HIGHLIGHT_MAX_BYTES = 100 * 1024; // 100 KB
 interface HighlighterInstance {
   codeToTokens: (
     code: string,
-    options: { lang: BundledLanguage; theme: string }
+    options: {
+      lang: BundledLanguage;
+      themes: { dark: string; light: string };
+    }
   ) => { tokens: ThemedToken[][] };
   loadLanguage: (lang: BundledLanguage) => Promise<void>;
   getLoadedLanguages: () => string[];
@@ -19,7 +22,7 @@ const loadedLanguages = new Set<string>();
 const loadingLanguages = new Map<string, Promise<boolean>>();
 
 /**
- * Lazily loads Shiki singleton instance.
+ * Lazily loads Shiki singleton instance with dual themes (github-dark and github-light).
  * If dynamic import or initialization fails, resets the singleton so future attempts can retry.
  */
 export async function getHighlighter(): Promise<HighlighterInstance | null> {
@@ -30,7 +33,7 @@ export async function getHighlighter(): Promise<HighlighterInstance | null> {
       try {
         const { createHighlighter } = await import("shiki");
         const instance = await createHighlighter({
-          themes: ["github-dark"],
+          themes: ["github-dark", "github-light"],
           langs: [],
         });
         highlighterInstance = instance as unknown as HighlighterInstance;
@@ -82,7 +85,7 @@ export async function ensureLanguageLoaded(lang: BundledLanguage): Promise<boole
 }
 
 /**
- * Tokenizes code into an array of token lines.
+ * Tokenizes code into an array of token lines with dual-theme CSS variables.
  * Returns null if language is not supported, file exceeds caps, or highlighting fails.
  */
 export async function highlightCode(
@@ -103,7 +106,10 @@ export async function highlightCode(
 
     const result = highlighter.codeToTokens(code, {
       lang,
-      theme: "github-dark",
+      themes: {
+        dark: "github-dark",
+        light: "github-light",
+      },
     });
 
     return result.tokens;

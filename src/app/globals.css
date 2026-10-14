@@ -5,11 +5,11 @@
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
-  --color-bg: #241D01;
-  --color-surface: #393A4F;
-  --color-line: #3A745D;
-  --color-accent: #AFFDF0;
-  --color-accent-2: #BEEF8D;
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-line: var(--line);
+  --color-accent: var(--accent);
+  --color-accent-2: var(--accent-2);
 
   /* shadcn mappings */
   --color-background: var(--bg);
@@ -39,6 +39,16 @@
 }
 
 :root {
+  /* Light theme default palette */
+  --bg: #FAFAF9;
+  --surface: #F3F4F6;
+  --line: #E5E7EB;
+  --accent: #111827;
+  --accent-2: #059669;
+}
+
+html.dark {
+  /* Dark theme palette */
   --bg: #241D01;
   --surface: #393A4F;
   --line: #3A745D;
@@ -53,6 +63,15 @@
   body {
     @apply bg-bg text-accent font-mono antialiased;
   }
+}
+
+/* Shiki dual-theme support */
+html.dark .shiki-token {
+  color: var(--shiki-dark, inherit) !important;
+  background-color: var(--shiki-dark-bg, inherit) !important;
+  font-style: var(--shiki-dark-font-style, inherit) !important;
+  font-weight: var(--shiki-dark-font-weight, inherit) !important;
+  text-decoration: var(--shiki-dark-text-decoration, inherit) !important;
 }
 
 .code-viewer pre.shiki {

@@ -6,6 +6,7 @@ import {
   FileText, Database, Settings, Search, X 
 } from "lucide-react";
 import { TreeNode } from "../shared/schemas";
+import { cn } from "../lib/utils";
 
 function getFileIcon(name: string) {
   const lower = name.toLowerCase();
@@ -204,7 +205,7 @@ export function TreeView({
 
   return (
     <div className="flex flex-col w-full h-full overflow-hidden text-sm">
-      <div className="px-3 py-2 border-b shrink-0 flex items-center gap-2" style={{ borderColor: "#3A745D" }}>
+      <div className="px-3 py-2 border-b border-line shrink-0 flex items-center gap-2">
         <Search className="h-4 w-4 opacity-50" />
         <input
           ref={filterRef}
@@ -230,8 +231,7 @@ export function TreeView({
               }
             }
           }}
-          className="bg-transparent border-none outline-none flex-1 placeholder:opacity-40 min-w-0"
-          style={{ color: "#AFFDF0" }}
+          className="bg-transparent border-none outline-none flex-1 placeholder:opacity-40 min-w-0 text-accent"
         />
         {filter && (
           <button 
@@ -283,23 +283,25 @@ export function TreeView({
                   setFocusedId(flatNode.id);
                 }}
                 onKeyDown={(e) => handleKeyDown(e, index, flatNode)}
-                className={`
-                  flex items-center w-full rounded outline-none transition-colors cursor-pointer select-none
-                  h-[24px] whitespace-nowrap
-                `}
+                className={cn(
+                  "flex items-center w-full rounded outline-none transition-colors cursor-pointer select-none h-[24px] whitespace-nowrap",
+                  isSelected
+                    ? "bg-line text-accent"
+                    : flatNode.kind === "directory"
+                    ? "text-accent-2 hover:bg-surface/60"
+                    : "text-accent hover:bg-surface/60",
+                  isFocused && "ring-1 ring-inset ring-line"
+                )}
                 style={{ 
                   paddingLeft: `${flatNode.level * 12 + 4}px`,
-                  backgroundColor: isSelected ? "#3A745D" : "transparent",
-                  color: isSelected ? "#AFFDF0" : (flatNode.kind === "directory" ? "#BEEF8D" : "inherit"),
-                  boxShadow: isFocused ? "inset 0 0 0 1px #3A745D" : "none"
                 }}
                 title={flatNode.id}
               >
                 <span className="flex items-center gap-1.5 min-w-0 pr-2">
-                  <span className="shrink-0 opacity-80" style={{ color: isSelected ? "#AFFDF0" : "inherit" }}>
+                  <span className="shrink-0 opacity-80">
                     <Icon className="h-3.5 w-3.5" />
                   </span>
-                  <span className={`truncate ${flatNode.kind === "directory" ? "font-semibold" : ""}`}>
+                  <span className={cn("truncate", flatNode.kind === "directory" && "font-semibold")}>
                     {flatNode.node.name}
                   </span>
                 </span>

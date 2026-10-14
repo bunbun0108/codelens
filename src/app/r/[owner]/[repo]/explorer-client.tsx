@@ -9,7 +9,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "../../../../components/ui/popover"
-import { GitCommit, AlertCircle, FolderTree, X } from "lucide-react"
+import { GitCommit, AlertCircle, FolderTree, X, Sun, Moon } from "lucide-react"
 import Link from "next/link"
 import { TreeView } from "../../../../components/tree-view"
 import { buildFileTree } from "../../../../lib/file-tree"
@@ -24,6 +24,50 @@ export function ExplorerClient({ snapshot, initialFile }: { snapshot: Snapshot; 
   const toggleButtonRef = React.useRef<HTMLButtonElement | null>(null);
   const drawerRef = React.useRef<HTMLDivElement | null>(null);
   const filterInputRef = React.useRef<HTMLInputElement | null>(null);
+
+  // Light/Dark theme state synced with documentElement class and localStorage via useSyncExternalStore
+  const isDark = React.useSyncExternalStore(
+    (onStoreChange) => {
+      const observer = new MutationObserver((mutations) => {
+        for (const m of mutations) {
+          if (m.type === "attributes" && m.attributeName === "class") {
+            onStoreChange();
+          }
+        }
+      });
+      observer.observe(document.documentElement, { attributes: true, attributeFilter: ["class"] });
+
+      const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
+      const handleMediaChange = (e: MediaQueryListEvent) => {
+        if (!localStorage.getItem("codelens-theme")) {
+          if (e.matches) {
+            document.documentElement.classList.add("dark");
+          } else {
+            document.documentElement.classList.remove("dark");
+          }
+        }
+      };
+      mediaQuery.addEventListener("change", handleMediaChange);
+
+      return () => {
+        observer.disconnect();
+        mediaQuery.removeEventListener("change", handleMediaChange);
+      };
+    },
+    () => document.documentElement.classList.contains("dark"),
+    () => true
+  );
+
+  const toggleTheme = React.useCallback(() => {
+    const nextDark = !document.documentElement.classList.contains("dark");
+    if (nextDark) {
+      document.documentElement.classList.add("dark");
+      localStorage.setItem("codelens-theme", "dark");
+    } else {
+      document.documentElement.classList.remove("dark");
+      localStorage.setItem("codelens-theme", "light");
+    }
+  }, []);
 
   // Called when Enter is pressed on a file in the tree — focuses the viewer
   const handleViewerFocus = React.useCallback(() => {
@@ -92,17 +136,11 @@ export function ExplorerClient({ snapshot, initialFile }: { snapshot: Snapshot; 
 
   return (
     <div 
-      className="flex h-screen w-full flex-col overflow-hidden" 
-      style={{ 
-        backgroundColor: "#241D01", 
-        color: "#AFFDF0",
-        fontFamily: "'JetBrains Mono', monospace" 
-      }}
+      className="flex h-screen w-full flex-col overflow-hidden bg-bg text-accent font-mono" 
     >
       {/* Header */}
       <header 
-        className="flex h-14 shrink-0 items-center justify-between px-3 sm:px-4 border-b"
-        style={{ borderColor: "#3A745D", backgroundColor: "#393A4F" }}
+        className="flex h-14 shrink-0 items-center justify-between px-3 sm:px-4 border-b border-line bg-surface text-accent"
       >
         <div className="flex items-center gap-2 sm:gap-3 min-w-0">
           {/* Mobile tree drawer toggle button */}
@@ -112,33 +150,32 @@ export function ExplorerClient({ snapshot, initialFile }: { snapshot: Snapshot; 
             onClick={() => setMobileDrawerOpen((prev) => !prev)}
             aria-label="Toggle repository tree"
             aria-expanded={mobileDrawerOpen}
-            className="sm:hidden inline-flex items-center justify-center p-1.5 rounded-md border text-accent hover:opacity-80 focus-visible:outline-none focus-visible:ring-1"
-            style={{ borderColor: "#3A745D", backgroundColor: "#241D01", color: "#BEEF8D" }}
+            className="sm:hidden inline-flex items-center justify-center p-1.5 rounded-md border border-line bg-bg text-accent-2 hover:opacity-80 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-line"
             id="mobile-tree-toggle"
           >
             <FolderTree className="h-4 w-4" />
           </button>
 
-          <Link href="/" className="font-bold hover:opacity-80 shrink-0" style={{ color: "#BEEF8D" }}>CodeLens</Link>
-          <span style={{ color: "#3A745D" }}>/</span>
+          <Link href="/" className="font-bold hover:opacity-80 shrink-0 text-accent-2">CodeLens</Link>
+          <span className="text-line">/</span>
           <div className="flex items-center gap-1.5 font-medium min-w-0 truncate">
             <span className="truncate">{snapshot.repo.owner}</span>
-            <span style={{ color: "#3A745D" }}>/</span>
+            <span className="text-line">/</span>
             <span className="truncate">{snapshot.repo.name}</span>
           </div>
           
           {snapshot.repo.archived && (
-            <Badge variant="secondary" style={{ backgroundColor: "#3A745D", color: "#AFFDF0", border: "none" }}>
+            <Badge variant="secondary" className="bg-line text-accent border-none">
               ARCHIVED
             </Badge>
           )}
 
-          <Badge variant="outline" style={{ borderColor: "#3A745D", color: "#AFFDF0" }} className="ml-2 hidden sm:inline-flex">
+          <Badge variant="outline" className="ml-2 hidden sm:inline-flex border-line text-accent">
             {snapshot.source.resolvedRefName}
           </Badge>
 
           <a href={commitUrl} target="_blank" rel="noopener noreferrer" className="hover:opacity-80 transition-opacity hidden sm:inline-flex">
-            <Badge variant="secondary" className="ml-1 text-[10px]" style={{ backgroundColor: "#3A745D", color: "#AFFDF0", border: "none" }}>
+            <Badge variant="secondary" className="ml-1 text-[10px] bg-line text-accent border-none">
               <GitCommit className="mr-1 h-3 w-3 inline" />
               {shortSha}
             </Badge>
@@ -146,7 +183,7 @@ export function ExplorerClient({ snapshot, initialFile }: { snapshot: Snapshot; 
 
           {snapshot.source.subpath && (
             <>
-              <span style={{ color: "#3A745D" }}>/</span>
+              <span className="text-line">/</span>
               <span className="text-sm hidden sm:inline">{snapshot.source.subpath}</span>
             </>
           )}
@@ -158,16 +195,15 @@ export function ExplorerClient({ snapshot, initialFile }: { snapshot: Snapshot; 
           
           <Popover>
             <PopoverTrigger 
-              className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 border shadow-sm hover:bg-accent hover:text-accent-foreground h-8 px-2 sm:px-3 text-xs"
-              style={{ borderColor: "#3A745D", backgroundColor: "#241D01", color: "#BEEF8D" }}
+              className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-line disabled:pointer-events-none disabled:opacity-50 border border-line bg-bg text-accent-2 shadow-sm hover:opacity-80 h-8 px-2 sm:px-3 text-xs"
             >
               <AlertCircle className="mr-1 sm:mr-2 h-3.5 w-3.5" />
               <span>{totalExcluded}</span>
               <span className="hidden sm:inline">&nbsp;excluded</span>
             </PopoverTrigger>
-            <PopoverContent className="w-64 p-4 border" style={{ backgroundColor: "#393A4F", borderColor: "#3A745D", color: "#AFFDF0" }}>
+            <PopoverContent className="w-64 p-4 border border-line bg-surface text-accent">
               <div className="space-y-2">
-                <h4 className="font-medium text-sm border-b pb-2" style={{ borderColor: "#3A745D" }}>Exclusion Reasons</h4>
+                <h4 className="font-medium text-sm border-b border-line pb-2">Exclusion Reasons</h4>
                 <div className="text-xs space-y-1 pt-1">
                   {Object.entries(snapshot.stats.excludedByReason).map(([reason, count]) => (
                     <div key={reason} className="flex justify-between">
@@ -182,6 +218,18 @@ export function ExplorerClient({ snapshot, initialFile }: { snapshot: Snapshot; 
               </div>
             </PopoverContent>
           </Popover>
+
+          {/* Theme toggle button */}
+          <button
+            type="button"
+            onClick={toggleTheme}
+            aria-label={isDark ? "Switch to light theme" : "Switch to dark theme"}
+            title={isDark ? "Switch to light theme" : "Switch to dark theme"}
+            className="inline-flex items-center justify-center rounded-md border border-line bg-bg text-accent-2 text-xs h-8 w-8 hover:opacity-80 transition-opacity focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-line cursor-pointer"
+            id="theme-toggle"
+          >
+            {isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+          </button>
         </div>
       </header>
 
@@ -206,16 +254,15 @@ export function ExplorerClient({ snapshot, initialFile }: { snapshot: Snapshot; 
             fixed sm:static
             inset-y-0 left-0
             w-72 sm:w-72
-            shrink-0 rounded-r-md sm:rounded-md border flex flex-col overflow-hidden shadow-xl sm:shadow-none
+            shrink-0 rounded-r-md sm:rounded-md border border-line bg-surface text-accent flex flex-col overflow-hidden shadow-xl sm:shadow-none
             transition-transform duration-200 ease-in-out
             ${mobileDrawerOpen ? "translate-x-0" : "-translate-x-full sm:translate-x-0"}
             ${mobileDrawerOpen ? "block" : "hidden sm:flex"}
           `}
-          style={{ backgroundColor: "#393A4F", borderColor: "#3A745D" }}
         >
           {/* Mobile drawer header with close button */}
-          <div className="sm:hidden flex items-center justify-between px-3 py-2 border-b" style={{ borderColor: "#3A745D" }}>
-            <span className="text-xs font-semibold" style={{ color: "#BEEF8D" }}>Files</span>
+          <div className="sm:hidden flex items-center justify-between px-3 py-2 border-b border-line">
+            <span className="text-xs font-semibold text-accent-2">Files</span>
             <button
               type="button"
               onClick={() => setMobileDrawerOpen(false)}
