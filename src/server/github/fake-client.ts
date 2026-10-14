@@ -39,6 +39,7 @@ const FAKE_BLOBS: Record<string, string> = {
   ["c006" + "0".repeat(36)]: 'import { add } from "../utils/math";\nconsole.log(add(1, 2));\n',
   ["c007" + "0".repeat(36)]: "# Contributing\n\nPlease read the README first.\n",
   ["c008" + "0".repeat(36)]: "MIT License\n\nCopyright (c) 2024 fake-owner\n",
+  ["c009" + "0".repeat(36)]: Array.from({ length: 60 }, (_, i) => `// Line ${i + 1}: export const item${i + 1} = ${i + 1};`).join("\n") + "\n",
 };
 
 const FAKE_TREE_ENTRIES = [
@@ -50,6 +51,7 @@ const FAKE_TREE_ENTRIES = [
   { path: "utils/consumer.ts",    sha: "c006" + "0".repeat(36), size: 58,  type: "blob" as const },
   { path: "CONTRIBUTING.md",      sha: "c007" + "0".repeat(36), size: 46,  type: "blob" as const },
   { path: "LICENSE",              sha: "c008" + "0".repeat(36), size: 44,  type: "blob" as const },
+  { path: "src/long.ts",          sha: "c009" + "0".repeat(36), size: 2400, type: "blob" as const },
 ];
 
 // ── Implementation ────────────────────────────────────────────────────────────

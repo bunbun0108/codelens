@@ -97,6 +97,8 @@ function getHashServerSnapshot() {
 interface FileViewerProps {
   snapshotId: string;
   selectedPath: string | null;
+  /** Called when Escape is pressed inside the viewer — returns focus to the tree */
+  onFocusTree?: () => void;
 }
 
 type ViewerState =
@@ -109,7 +111,7 @@ type ViewerState =
       retryable: boolean;
     };
 
-export function FileViewer({ snapshotId, selectedPath }: FileViewerProps) {
+export function FileViewer({ snapshotId, selectedPath, onFocusTree }: FileViewerProps) {
   const [state, setState] = React.useState<ViewerState>(() => {
     if (selectedPath) {
       const cached = getCachedFile(snapshotId, selectedPath);
@@ -144,6 +146,10 @@ export function FileViewer({ snapshotId, selectedPath }: FileViewerProps) {
     getHashServerSnapshot
   );
 
+  // Track whether hash change came from user click to avoid auto-scrolling on click
+  const userClickedLineRef = React.useRef(false);
+  const lastScrolledKeyRef = React.useRef<string | null>(null);
+
   // Derived active line range
   const activeRange = React.useMemo(() => {
     if (lines.length === 0) return null;
@@ -151,15 +157,43 @@ export function FileViewer({ snapshotId, selectedPath }: FileViewerProps) {
     return clampLineRange(parsed, lines.length);
   }, [currentHash, lines.length]);
 
-  // Scroll to active line range
+  // Scroll to active line range:
+  // - Only when state is "loaded" and DOM nodes are rendered
+  // - Once per file load or external hash change (back/forward navigation)
+  // - Not on internal hash changes triggered by user line clicks
   React.useEffect(() => {
-    if (activeRange) {
+    if (state.status !== "loaded" || !selectedPath || !activeRange) {
+      return;
+    }
+
+    if (userClickedLineRef.current) {
+      userClickedLineRef.current = false;
+      return;
+    }
+
+    const scrollKey = `${selectedPath}:${activeRange.start}`;
+    if (lastScrolledKeyRef.current === scrollKey) {
+      return;
+    }
+
+    let rafId: number | null = null;
+    rafId = requestAnimationFrame(() => {
       const target = document.getElementById(`L${activeRange.start}`);
       if (target) {
+        lastScrolledKeyRef.current = scrollKey;
         target.scrollIntoView({ block: "center", behavior: "smooth" });
       }
-    }
-  }, [activeRange]);
+    });
+
+    return () => {
+      if (rafId !== null) cancelAnimationFrame(rafId);
+    };
+  }, [state.status, selectedPath, activeRange]);
+
+  // Reset lastScrolledKeyRef when selectedPath changes
+  React.useEffect(() => {
+    lastScrolledKeyRef.current = null;
+  }, [selectedPath]);
 
   // Fetch file content with caching and race condition protection
   const fetchFile = React.useCallback(
@@ -223,21 +257,24 @@ export function FileViewer({ snapshotId, selectedPath }: FileViewerProps) {
       return;
     }
 
-    if (prevPathRef.current !== selectedPath) {
-      // Clear hash if navigating to a new file (unless initial mount)
-      if (!isInitialMountRef.current && typeof window !== "undefined") {
-        if (window.location.hash) {
-          window.history.replaceState(
-            null,
-            "",
-            window.location.pathname + window.location.search
-          );
-        }
+    // Clear hash if navigating to a different file (unless initial mount)
+    if (!isInitialMountRef.current && typeof window !== "undefined") {
+      if (prevPathRef.current && prevPathRef.current !== selectedPath && window.location.hash) {
+        window.history.replaceState(
+          null,
+          "",
+          window.location.pathname + window.location.search
+        );
       }
-      isInitialMountRef.current = false;
-      prevPathRef.current = selectedPath;
-      fetchFile(selectedPath);
     }
+    isInitialMountRef.current = false;
+    prevPathRef.current = selectedPath;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    fetchFile(selectedPath);
+
+    return () => {
+      abortControllerRef.current?.abort();
+    };
   }, [selectedPath, fetchFile]);
 
   // Cleanup abort controller on unmount
@@ -301,6 +338,7 @@ export function FileViewer({ snapshotId, selectedPath }: FileViewerProps) {
 
       const clamped = clampLineRange(newRange, lines.length);
       if (clamped) {
+        userClickedLineRef.current = true;
         window.location.hash = formatLineHash(clamped);
       }
     },
@@ -428,7 +466,7 @@ export function FileViewer({ snapshotId, selectedPath }: FileViewerProps) {
         <div className="flex items-center gap-3 shrink-0">
           {highlightSkipped && (
             <span
-              className="text-[11px] text-accent/50 hidden sm:inline-block"
+              className="text-[11px] text-accent/50 inline-block"
               title="Syntax highlighting disabled for large file"
             >
               Highlighting skipped
@@ -484,6 +522,12 @@ export function FileViewer({ snapshotId, selectedPath }: FileViewerProps) {
         tabIndex={0}
         role="region"
         aria-label={`File content: ${fileData.path}`}
+        onKeyDown={(e) => {
+          if (e.key === "Escape") {
+            e.preventDefault();
+            onFocusTree?.();
+          }
+        }}
         className="flex-1 overflow-x-auto overflow-y-auto focus:outline-none focus-visible:ring-1 focus-visible:ring-line py-3 code-viewer [tab-size:2]"
         style={{ tabSize: 2 }}
       >
