@@ -2,7 +2,7 @@
 
 Explore any public GitHub repository's file tree and source files, pinned to a specific commit SHA — with syntax highlighting, without cloning.
 
-[![CI](https://github.com/your-org/codelens/actions/workflows/ci.yml/badge.svg)](https://github.com/your-org/codelens/actions/workflows/ci.yml)
+[![CI](https://github.com/bunbun0108/codelens/actions/workflows/ci.yml/badge.svg)](https://github.com/bunbun0108/codelens/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 ---
